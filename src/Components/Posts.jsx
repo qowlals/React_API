@@ -1,69 +1,34 @@
-import React, { useEffect, useReducer } from 'react';
+import React, { useState } from 'react';
 import axios from "axios";
+import Post from './Post';
+import useAsync from '../useAsync';
 
-function reducer(state, action) {
-    switch (action.type) {
-        case "LOADING":
-            return {
-                loading: true,
-                data: null,
-                error: null
-            }
-        case "SUCCESS":
-            return {
-                loading: false,
-                data: action.data,
-                error: null
-            }
-        case "ERROR":
-            return {
-                loading: false,
-                data: null,
-                error: action.error
-            }
-        default:
-            throw new Error(`Unhandled action type: ${action.type}`)
-    }
-}
-
-const initialState = {
-    loading: false,
-    data: null,
-    error: false,
+async function getUsers() {
+    const response = await axios.get(
+        'https://jsonplaceholder.typicode.com/posts'
+    );
+    return response.data;
 }
 
 function Posts() {
-    const [state, dispatch] = useReducer(reducer, initialState);
+    const [userId, setUserId] = useState(null);
+    const [state, refetch] = useAsync(getUsers, [], true);
 
-    const fetchData = async () => {
-        dispatch({ type: "LOADING" });
-        try {
-            const response = await axios.get(
-                "https://jsonplaceholder.typicode.com/posts"
-            );
-            dispatch({ type: "SUCCESS", data: response.data })
-        } catch (error) {
-            dispatch({ type: "ERROR", error: error })
-        }
-    };
+    const { loading, data: users, error } = state; // state.data 를 users 키워드로 조회
 
-    useEffect(() => {
-        fetchData();
-    }, [])
-
-    const { data: users } = state;
+    if (loading) return <div>로딩중..</div>;
+    if (error) return <div>에러가 발생했습니다</div>;
+    if (!users) return <button onClick={refetch}>불러오기</button>;
 
     return (
         <div>
-            <ul>
-
-                {users?.map(user => (
-                    <li key={user.id}>
-                        {user.title} ({user.body})
-                    </li>
-                ))}
-            </ul>
-            <button onClick={fetchData}>다시 불러오기</button>
+            {users && users.map(user => (
+                <div key={user.id} onClick={() => setUserId(user.id)}>
+                    {user.title} <div style={{ color: "red" }}>({user.body})</div>
+                </div>
+            ))}
+            <button onClick={refetch}>다시 불러오기</button>
+            {userId && <Post id={userId} />}
         </div>
     );
 }
